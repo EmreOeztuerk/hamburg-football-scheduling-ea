@@ -25,7 +25,7 @@ Dieses Projekt implementiert eine End-to-End-Pipeline:
 4. Evaluation: Vergleich der generierten Pläne mit manuellen Referenzplänen hinsichtlich Konfliktfreiheit und Zeitwünschen.
 
 # 🛠 Tech Stack
-- Language: Python 3.x
+- Language: Python 3.12
 
 - Scraping: Selenium, BeautifulSoup
 
