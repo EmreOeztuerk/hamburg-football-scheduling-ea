@@ -1,91 +1,80 @@
-import os
-import time
-import re
-import pandas as pd
-import undetected_chromedriver as uc
+import requests
 from bs4 import BeautifulSoup
+import time
+import csv
+import os
+
+# Liste der URLs
+urls = [
+    "https://www.fussball.de/spieltagsuebersicht/kk-01-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TESB8NIG00000EVS5489BTVTLPPK10-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kk-02-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TESB8NP0000003VS5489BTVTLPPK10-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kk-03-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TESB8NV000000EVS5489BTVTLPPK10-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kk-04-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TESB8O5G00000AVS5489BTVTLPPK10-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kk-05-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TESB8OBS00000EVS5489BTVTLPPK10-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kk-06-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TESB8OHS00000EVS5489BTVTLPPK10-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kk-07-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TESB8ONS00000EVS5489BTVTLPPK10-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kk-08-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TESB8OTO00000EVS5489BTVTLPPK10-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kk-09-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TLKR3K44000004VS5489BUVUPJS9JR-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kk-10-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TLKU14TK000003VS5489BUVUPJS9JR-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kk-11-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TLKUAA3K000004VS5489BUVUPJS9JR-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kk-12-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TLKUEF10000004VS5489BUVUPJS9JR-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kl-01-kreisebene-hamburg-kreisliga-herren-saison2526-hamburg/-/staffel/02TESB4EBK00000CVS5489BTVTLPPK10-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kl-02-kreisebene-hamburg-kreisliga-herren-saison2526-hamburg/-/staffel/02TESB4EIO00000EVS5489BTVTLPPK10-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kl-03-kreisebene-hamburg-kreisliga-herren-saison2526-hamburg/-/staffel/02TESB4EPG00000DVS5489BTVTLPPK10-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kl-04-kreisebene-hamburg-kreisliga-herren-saison2526-hamburg/-/staffel/02TESB4EV400000EVS5489BTVTLPPK10-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kl-05-kreisebene-hamburg-kreisliga-herren-saison2526-hamburg/-/staffel/02TESB4F4S00000EVS5489BTVTLPPK10-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kl-06-kreisebene-hamburg-kreisliga-herren-saison2526-hamburg/-/staffel/02TESB4FB800000EVS5489BTVTLPPK10-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kl-07-kreisebene-hamburg-kreisliga-herren-saison2526-hamburg/-/staffel/02TESB4FGO00000EVS5489BTVTLPPK10-G#!/section/table/",
+    "https://www.fussball.de/spieltagsuebersicht/kl-08-kreisebene-hamburg-kreisliga-herren-saison2526-hamburg/-/staffel/02TESB4FMK00000EVS5489BTVTLPPK10-G#!/section/table/"
+]
+
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+}
+
+# Ordner erstellen
+output_dir = "data"
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+csv_path = os.path.join(output_dir, "hamburg_vereine_raw.csv")
 
 
-class HFVScraper:
-    def __init__(self):
-        options = uc.ChromeOptions()
-        # undetected_chromedriver hilft gegen Bot-Sperren
-        self.driver = uc.Chrome(options=options)
-        self.driver.maximize_window()
+def scrape_staffel(url):
+    # Extrahiert den Namen der Staffel aus der URL für die CSV-Spalte
+    staffel_name = url.split('/')[4].split('-')[0:2]
+    staffel_label = "-".join(staffel_name).upper()  # z.B. KK-01
 
-    def clean_club_name(self, raw_name):
-        """
-        Extrahiert den Stammverein.
-        Beispiel: 'SV Barmbek 2.' -> 'SV Barmbek'
-        """
-        # Entfernt Zusätze wie 1., 2., I, II, III am Ende des Namens
-        # Nutzt Regex, um Zahlen oder römische Ziffern am Ende zu finden
-        clean = re.sub(r'\s+(\d+\.|[IVX]+)$', '', raw_name.strip())
-        return clean
-
-    def get_staffel_data(self, url_list):
-        all_results = []
-
-        for url in url_list:
-            print(f"\nLade Staffel-Übersicht: {url}")
-            try:
-                self.driver.get(url)
-                # Zeit für manuelles Cookie-Klicken (nur beim ersten Mal nötig)
-                time.sleep(8)
-
-                soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-
-                # Suche gezielt nach den Tabellenzellen der Mannschaften
-                cells = soup.find_all('td', class_='cl-table-teams')
-
-                staffel_teams = []
-                for cell in cells:
-                    name = cell.get_text(strip=True)
-                    if name and name not in staffel_teams:
-                        staffel_teams.append(name)
-
-                print(f"Gefundene Teams in dieser Staffel: {len(staffel_teams)}")
-
-                for team in staffel_teams:
-                    all_results.append({
-                        "staffel_url": url,
-                        "mannschaft_name": team,
-                        "stammverein": self.clean_club_name(team)
-                    })
-            except Exception as e:
-                print(f"Fehler beim Laden von {url}: {e}")
-
-        return all_results
-
-    def close(self):
-        self.driver.quit()
-
-
-if __name__ == "__main__":
-    urls = [
-        "https://www.fussball.de/spieltagsuebersicht/kk-01-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TESB8NIG00000EVS5489BTVTLPPK10-G#!/section/table/",
-        "https://www.fussball.de/spieltagsuebersicht/kk-02-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TESB8NP0000003VS5489BTVTLPPK10-G#!/section/table/",
-        "https://www.fussball.de/spieltagsuebersicht/kk-03-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TESB8NV000000EVS5489BTVTLPPK10-G#!/section/table/",
-        "https://www.fussball.de/spieltagsuebersicht/kk-04-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TESB8O5G00000AVS5489BTVTLPPK10-G#!/section/table/",
-        "https://www.fussball.de/spieltagsuebersicht/kk-05-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TESB8OBS00000EVS5489BTVTLPPK10-G#!/section/table/",
-        "https://www.fussball.de/spieltagsuebersicht/kk-06-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TESB8OHS00000EVS5489BTVTLPPK10-G#!/section/table/",
-        "https://www.fussball.de/spieltagsuebersicht/kk-07-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TESB8ONS00000EVS5489BTVTLPPK10-G#!/section/table/",
-        "https://www.fussball.de/spieltagsuebersicht/kk-08-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TESB8OTO00000EVS5489BTVTLPPK10-G#!/section/table/",
-        "https://www.fussball.de/spieltagsuebersicht/kk-09-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TLKR3K44000004VS5489BUVUPJS9JR-G#!/section/table/",
-        "https://www.fussball.de/spieltagsuebersicht/kk-10-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TLKU14TK000003VS5489BUVUPJS9JR-G#!/section/table/",
-        "https://www.fussball.de/spieltagsuebersicht/kk-11-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TLKUAA3K000004VS5489BUVUPJS9JR-G#!/section/table/",
-        "https://www.fussball.de/spieltagsuebersicht/kk-12-kreisebene-hamburg-kreisklasse-herren-saison2526-hamburg/-/staffel/02TLKUEF10000004VS5489BUVUPJS9JR-G#!/section/table/"
-    ]
-
-    scraper = HFVScraper()
+    print(f"Scrape: {staffel_label}...")
     try:
-        results = scraper.get_staffel_data(urls)
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
 
-        if results:
-            df = pd.DataFrame(results)
-            # Speichern im Daten-Ordner
-            df.to_csv("teams_basis_geputzt.csv", index=False, encoding='utf-8-sig')
-            print(f"\nErfolg: {len(df)} Mannschaften gespeichert.")
-            print(df.head(10))  # Zeige die ersten 10 zur Kontrolle
-    finally:
-        scraper.close()
+        club_divs = soup.find_all('div', class_='club-name')
+        teams = [div.get_text().strip() for div in club_divs if div.get_text().strip()]
+        return staffel_label, teams
+    except Exception as e:
+        print(f"Fehler bei {url}: {e}")
+        return staffel_label, []
+
+
+# Datei schreiben mit UTF-8-SIG für korrekte Umlaute in Excel
+try:
+    with open(csv_path, mode='w', newline='', encoding='utf-8-sig') as file:
+        # Delimiter auf Semikolon für deutsches Excel
+        writer = csv.writer(file, delimiter=';')
+        writer.writerow(["Staffel", "Vereinsname"])
+
+        for url in urls:
+            label, teams = scrape_staffel(url)
+            for team in teams:
+                writer.writerow([label, team])
+
+            print(f"-> {len(teams)} Vereine in {label} gefunden.")
+            time.sleep(1)  # Kurze Pause gegen Sperren
+
+except PermissionError:
+    print("FEHLER: Die Datei ist noch in Excel geöffnet! Bitte schließen und erneut versuchen.")
+
+print(f"\nFertig! Die Datei mit korrekten Umlauten liegt hier: {csv_path}")
