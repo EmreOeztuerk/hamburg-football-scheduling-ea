@@ -1,73 +1,135 @@
-import pandas as pd
-from geopy.geocoders import Nominatim
-from geopy.extra.rate_limiter import RateLimiter
-import time
+"""
+Adress-Geocoder für Hamburger Amateurvereine.
+
+Liest die exakten Adressen aus der CSV, wandelt sie über Nominatim
+in Längen- und Breitengrade um und nutzt einen Adress-Cache,
+um API-Anfragen für Mannschaften desselben Vereins zu reduzieren.
+"""
+
+import csv
 import os
+import time
+import requests
 
+# --- PFAD-RESOLUTION ---
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+SRC_DIR = os.path.dirname(CURRENT_DIR)
+PROJECT_ROOT = os.path.dirname(SRC_DIR)
 
-def geocode_hamburg_teams():
-    # Pfade
-    input_path = "data/hamburg_vereine_raw.csv"
-    output_path = "data/hamburg_teams_geocoded.csv"
+DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+INPUT_CSV = os.path.join(DATA_DIR, "hamburg_vereine_addresses_final.csv")
+OUTPUT_CSV = os.path.join(DATA_DIR, "hamburg_vereine_geocoded_final.csv")
 
-    if not os.path.exists(input_path):
-        print(f"Fehler: {input_path} nicht gefunden!")
-        return
+HEADERS = {
+    'User-Agent': 'HamburgFootballEA/2.0 (Bachelorarbeit PoC)'
+}
 
-    # Daten laden (beachte dein Semikolon-Trennzeichen)
-    df = pd.read_csv(input_path, sep=';', encoding='utf-8-sig')
+def geocode_address(address: str) -> tuple[float | None, float | None]:
+    """
+    Fragt Nominatim nach den Koordinaten einer Adresse.
+    Mit intelligentem Fallback, falls Stadionnamen die Suche stören.
+    """
+    if "NICHT GEFUNDEN" in address or "FEHLER" in address:
+        return None, None
 
-    # Duplikate entfernen (gleiche Vereine in verschiedenen Staffeln)
-    unique_teams = df[['Vereinsname']].drop_duplicates()
+    url = "https://nominatim.openstreetmap.org/search"
 
-    geolocator = Nominatim(user_agent="hamburg_football_optimizer_thesis")
-    # Rate Limiter: Maximal 1 Anfrage pro Sekunde (Vorgabe von Nominatim)
-    geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1.1)
+    # Variante 1: Komplette Adresse versuchen
+    # Variante 2: Nur die letzten beiden Teile (meist Straße, PLZ + Ort)
+    # Beispiel: "Stadion X, Musterstr. 1, 12345 Stadt" -> "Musterstr. 1, 12345 Stadt"
+    parts = [p.strip() for p in address.split(',')]
 
-    print(f"Starte Geocoding für {len(unique_teams)} eindeutige Vereine...")
+    queries = [address]
+    if len(parts) >= 2:
+        queries.append(f"{parts[-2]}, {parts[-1]}")
 
-    results = []
-    for index, row in unique_teams.iterrows():
-        name = row['Vereinsname']
-        # Wir optimieren die Suchanfrage: "Vereinsname + Hamburg + Sportplatz"
-        query = f"{name} Hamburg Sportplatz"
+    for query in queries:
+        params = {
+            'q': query,
+            'format': 'json',
+            'limit': 1,
+            'countrycodes': 'de'
+        }
 
         try:
-            location = geocode(query)
-            if location:
-                results.append({
-                    "Vereinsname": name,
-                    "lat": location.latitude,
-                    "lon": location.longitude,
-                    "address_found": location.address
-                })
-                print(f"Gefunden: {name}")
-            else:
-                # Fallback ohne "Sportplatz"
-                location = geocode(f"{name} Hamburg")
-                if location:
-                    results.append({
-                        "Vereinsname": name,
-                        "lat": location.latitude,
-                        "lon": location.longitude,
-                        "address_found": location.address
-                    })
-                    print(f"Gefunden (Fallback): {name}")
-                else:
-                    print(f"!!! Nicht gefunden: {name}")
+            response = requests.get(url, params=params, headers=HEADERS)
+            response.raise_for_status()
+            data = response.json()
+
+            if data:
+                return float(data[0]['lat']), float(data[0]['lon'])
+
         except Exception as e:
-            print(f"Fehler bei {name}: {e}")
-            time.sleep(2)
+            print(f"API-Fehler bei '{query}': {e}")
 
-    # Ergebnisse speichern
-    geo_df = pd.DataFrame(results)
+        time.sleep(1.5) # Zwingende Pause (1 Sekunde Limit bei Nominatim)
 
-    # Jetzt führen wir die Geodaten wieder mit der ursprünglichen Staffelliste zusammen
-    final_df = pd.merge(df, geo_df, on="Vereinsname", how="left")
-    final_df.to_csv(output_path, index=False, sep=';', encoding='utf-8-sig')
+    return None, None
 
-    print(f"\nFertig! Geocodierte Daten in {output_path} gespeichert.")
+
+def main():
+    print("=== Geocoding der exakten Sportplatz-Adressen ===")
+
+    if not os.path.exists(INPUT_CSV):
+        print(f"FEHLER: Datei {INPUT_CSV} nicht gefunden.")
+        return
+
+    # Daten einlesen
+    teams_data = []
+    with open(INPUT_CSV, mode='r', encoding='utf-8-sig') as file:
+        reader = csv.DictReader(file, delimiter=';')
+        for row in reader:
+            teams_data.append({
+                "staffel": row["Staffel"],
+                "mannschaft": row["Mannschaft"],
+                "adresse": row["Adresse"]
+            })
+
+    print(f"{len(teams_data)} Mannschaften geladen. Beginne API-Abfragen...\n")
+
+    # Der geniale Cache: Speichert Koordinaten pro ADRESSE, nicht pro Mannschaft!
+    address_cache = {}
+
+    with open(OUTPUT_CSV, mode='w', newline='', encoding='utf-8-sig') as out_file:
+        writer = csv.writer(out_file, delimiter=';')
+        writer.writerow(["Staffel", "Mannschaft", "Breitengrad", "Laengengrad", "Adresse"])
+
+        for team in teams_data:
+            adresse = team["adresse"]
+            mannschaft = team["mannschaft"]
+
+            print(f"Suche: {mannschaft} ... ", end="", flush=True)
+
+            # Wenn die Adresse völlig fehlt
+            if "NICHT GEFUNDEN" in adresse:
+                print("ÜBERSPRUNG (Keine Adresse vorhanden)")
+                writer.writerow([team["staffel"], mannschaft, "NICHT GEFUNDEN", "NICHT GEFUNDEN", adresse])
+                continue
+
+            # Wenn wir die Adresse noch nie geocodet haben -> API fragen
+            if adresse not in address_cache:
+                lat, lon = geocode_address(adresse)
+                address_cache[adresse] = (lat, lon)
+
+                if lat and lon:
+                    print(f"GEFUNDEN! (Neu über API)")
+                else:
+                    print("FEHLER! (Adresse von Karte nicht erkannt)")
+            else:
+                # Wir haben die Adresse schon im Cache!
+                lat, lon = address_cache[adresse]
+                print("GEFUNDEN! (Aus Zwischenspeicher)")
+
+            # In CSV schreiben
+            if lat and lon:
+                writer.writerow([team["staffel"], mannschaft, lat, lon, adresse])
+            else:
+                writer.writerow([team["staffel"], mannschaft, "NICHT GEFUNDEN", "NICHT GEFUNDEN", adresse])
+
+    print("\n" + "="*50)
+    print(f"Fertig! Die finalen Geodaten liegen hier:\n{OUTPUT_CSV}")
+    print("="*50)
 
 
 if __name__ == "__main__":
-    geocode_hamburg_teams()
+    main()
