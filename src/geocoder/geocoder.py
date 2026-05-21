@@ -11,7 +11,11 @@ import os
 import time
 import requests
 
-# --- PFAD-RESOLUTION ---
+HEADERS = {
+    'User-Agent': 'HamburgFootballEA/2.0 (Bachelorarbeit PoC)'
+}
+
+# Pfadkonfiguration
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 SRC_DIR = os.path.dirname(CURRENT_DIR)
 PROJECT_ROOT = os.path.dirname(SRC_DIR)
@@ -19,10 +23,6 @@ PROJECT_ROOT = os.path.dirname(SRC_DIR)
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 INPUT_CSV = os.path.join(DATA_DIR, "hamburg_vereine_addresses_final.csv")
 OUTPUT_CSV = os.path.join(DATA_DIR, "hamburg_vereine_geocoded_final.csv")
-
-HEADERS = {
-    'User-Agent': 'HamburgFootballEA/2.0 (Bachelorarbeit PoC)'
-}
 
 def geocode_address(address: str) -> tuple[float | None, float | None]:
     """

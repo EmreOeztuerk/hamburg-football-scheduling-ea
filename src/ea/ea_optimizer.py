@@ -1,9 +1,10 @@
 """
-Evolutionärer Algorithmus - Hauptskript
+Evolutionärer Algorithmus zur Lösung des regionalen Clustering-Problems.
 
-Dieses Skript optimiert die Zuteilung der Hamburger Amateurvereine.
-Es wendet "Hard Constraints" an, indem es Kreisklasse (KK) und
-Kreisliga (KL) strikt voneinander trennt und separat optimiert.
+Das Modul führt die algorithmische Optimierung der Staffeleinteilung durch.
+Es werden zwei Lösungsräume evaluiert:
+Szenario A: Erhalt der bestehenden Ligenstrukturen (feste Staffelanzahl).
+Szenario B: Neuausrichtung der Kapazitäten gemäß sportlichem Regelwerk.
 """
 
 import csv
@@ -11,210 +12,247 @@ import os
 import random
 import copy
 
-# --- PFAD-RESOLUTION ---
+# Pfadkonfiguration
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 SRC_DIR = os.path.dirname(CURRENT_DIR)
 PROJECT_ROOT = os.path.dirname(SRC_DIR)
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+
 MATRIX_CSV = os.path.join(DATA_DIR, "distance_matrix.csv")
 TEAMS_CSV = os.path.join(DATA_DIR, "hamburg_vereine_geocoded_final.csv")
 
-# --- EA PARAMETER ---
-POPULATION_SIZE = 50      # Anzahl der Spielpläne pro Generation
-GENERATIONS = 2000         # Wie oft sich die Population fortpflanzt
-MUTATION_RATE = 0.2       # 20% Chance für eine Mutation
-ELITISM_RATE = 0.1        # Die besten 10% überleben ungetastet
-
+# EA-Parameter
+POPULATION_SIZE = 50
+GENERATIONS = 1500
+MUTATION_RATE = 0.5
+ELITISM_RATE = 0.1
+PENALTY_KM = 5000.0
 
 def load_data() -> tuple[dict, list, list]:
-    """Lädt die Matrix und teilt die Teams in KL und KK auf."""
     dist_matrix = {}
-
-    # 1. Distanzmatrix laden
-    with open(MATRIX_CSV, mode='r', encoding='utf-8-sig') as file:
-        reader = csv.reader(file, delimiter=';')
-        headers = next(reader)
-        all_teams = headers[1:]
-
+    with open(MATRIX_CSV, mode='r', encoding='utf-8-sig') as f:
+        reader = csv.reader(f, delimiter=';')
+        header = next(reader)
         for row in reader:
-            team_a = row[0]
-            dist_matrix[team_a] = {}
-            for i, team_b in enumerate(all_teams):
-                dist_matrix[team_a][team_b] = float(row[i+1])
+            team_name = row[0]
+            dist_matrix[team_name] = {}
+            for idx, val in enumerate(row[1:], start=1):
+                target_team = header[idx]
+                dist_matrix[team_name][target_team] = float(val)
 
-    # 2. Ligen-Zugehörigkeit auslesen
-    kk_teams = []
-    kl_teams = []
-
-    with open(TEAMS_CSV, mode='r', encoding='utf-8-sig') as file:
-        reader = csv.DictReader(file, delimiter=';')
+    kk_teams, kl_teams = [], []
+    with open(TEAMS_CSV, mode='r', encoding='utf-8-sig') as f:
+        reader = csv.reader(f, delimiter=';')
+        next(reader)
         for row in reader:
-            team = row["Mannschaft"]
-            if row["Breitengrad"] == "NICHT GEFUNDEN":
-                continue # Überspringen, falls Daten fehlen
-
-            if row["Staffel"].startswith("KK"):
+            if len(row) < 4 or row[2] == "NICHT GEFUNDEN":
+                continue
+            staffel, team = row[0], row[1]
+            if "KK" in staffel:
                 kk_teams.append(team)
-            elif row["Staffel"].startswith("KL"):
+            elif "KL" in staffel:
                 kl_teams.append(team)
-
     return dist_matrix, kk_teams, kl_teams
 
+def get_base_club_name(team_name: str) -> str:
+    """Extrahiert den Basisvereinsnamen zur Identifikation interner Duelle."""
+    return "".join([c for c in team_name if not c.isdigit()]).strip()
 
-def split_into_staffeln(individual: list, num_staffeln: int) -> list:
-    """
-    Teilt eine Liste von Teams mathematisch korrekt in eine feste Anzahl
-    von Staffeln auf. Verteilt den "Rest" fair.
-    Beispiel: 160 Teams in 12 Staffeln -> 4 Staffeln mit 14, 8 Staffeln mit 13.
-    """
-    staffeln = []
-    base_size = len(individual) // num_staffeln
+def calculate_fitness(individual: list, num_staffeln: int, dist_matrix: dict) -> float:
+    """Zielfunktion (Fitness) der Optimierung."""
+    teams_per_staffel = len(individual) // num_staffeln
     remainder = len(individual) % num_staffeln
-
-    start = 0
-    for i in range(num_staffeln):
-        # Die ersten 'remainder' Staffeln bekommen ein Team mehr, damit es exakt aufgeht
-        size = base_size + 1 if i < remainder else base_size
-        staffeln.append(individual[start:start + size])
-        start += size
-
-    return staffeln
-
-
-def calculate_fitness(individual: list, dist_matrix: dict, num_staffeln: int) -> float:
-    """
-    Berechnet die Gesamtkilometer + Vereinsstrafen (Penalties).
-    """
     total_km = 0.0
-    penalty = 0.0
+    start_idx = 0
 
-    # Teams korrekt aufteilen
-    staffeln = split_into_staffeln(individual, num_staffeln)
+    for s in range(num_staffeln):
+        size = teams_per_staffel + (1 if s < remainder else 0)
+        staffel_teams = individual[start_idx : start_idx + size]
+        start_idx += size
 
-    for teams in staffeln:
-        # 1. Distanzen berechnen
-        for x in range(len(teams)):
-            for y in range(x + 1, len(teams)):
-                team_a = teams[x]
-                team_b = teams[y]
-                total_km += dist_matrix[team_a][team_b] * 2
+        base_clubs = [get_base_club_name(t) for t in staffel_teams]
+        duplicates = len(base_clubs) - len(set(base_clubs))
+        if duplicates > 0:
+            total_km += duplicates * PENALTY_KM
 
-        # 2. VEREINS-REGEL (Penalty System)
-        # Wir prüfen, ob zwei Teams denselben "Stammverein" haben
-        # Beispiel: "FC Elmshorn 1." und "FC Elmshorn 2." -> Stammverein ist "FC Elmshorn"
-        stammvereine = []
-        for t in teams:
-            # Alles ab der Zahl am Ende abschneiden (z.B. " 2.")
-            stamm = ''.join([i for i in t if not i.isdigit()]).strip().rstrip('.')
-            stammvereine.append(stamm)
+        for i in range(len(staffel_teams)):
+            for j in range(i + 1, len(staffel_teams)):
+                t1, t2 = staffel_teams[i], staffel_teams[j]
+                if t1 in dist_matrix and t2 in dist_matrix[t1]:
+                    total_km += dist_matrix[t1][t2] * 2
+    return total_km
 
-        # Wenn ein Stammverein doppelt in dieser Staffel ist, gibt es Strafe!
-        for stamm in set(stammvereine):
-            count = stammvereine.count(stamm)
-            if count > 1:
-                # 500 km Strafe für jedes zusätzliche Team desselben Vereins in der Staffel!
-                penalty += (count - 1) * 500.0
+def tournament_selection(population_with_fitness: list, k: int = 3) -> list:
+    """Führt eine Turnierselektion für die Reproduktion durch."""
+    tournament = random.sample(population_with_fitness, k)
+    best_in_tournament = min(tournament, key=lambda x: x[1])
+    return best_in_tournament[0]
 
-    return total_km + penalty
+def order_crossover(p1: list, p2: list) -> list:
+    """Implementiert den Order Crossover (OX) Operator."""
+    size = len(p1)
+    start, end = sorted([random.randint(0, size - 1), random.randint(0, size - 1)])
+    child = [None] * size
+    child[start:end+1] = p1[start:end+1]
 
-
-def create_initial_population(teams: list) -> list:
-    """Erstellt die allererste Generation."""
-    population = []
-    for _ in range(POPULATION_SIZE):
-        individual = copy.deepcopy(teams)
-        random.shuffle(individual)
-        population.append(individual)
-    return population
-
-
-def crossover(parent1: list, parent2: list) -> list:
-    """Order Crossover: Nimmt die Hälfte von P1 und füllt mit P2 auf."""
-    half_point = len(parent1) // 2
-    child = parent1[:half_point]
-    child_set = set(child)
-
-    for team in parent2:
-        if team not in child_set:
-            child.append(team)
-
+    p2_filtered = [team for team in p2 if team not in child]
+    p2_idx = 0
+    for i in range(size):
+        if child[i] is None:
+            child[i] = p2_filtered[p2_idx]
+            p2_idx += 1
     return child
 
-
-def mutate(individual: list):
-    """Swap-Mutation: Vertauscht zwei Vereine zufällig."""
-    if random.random() < MUTATION_RATE:
-        idx1 = random.randint(0, len(individual) - 1)
-        idx2 = random.randint(0, len(individual) - 1)
+def swap_mutation(individual: list, rate: float):
+    """Implementiert Swap-Mutation zur Exploration des Suchraums."""
+    if random.random() < rate:
+        idx1, idx2 = random.sample(range(len(individual)), 2)
         individual[idx1], individual[idx2] = individual[idx2], individual[idx1]
 
+def run_evolution(teams: list, num_staffeln: int, dist_matrix: dict, label: str) -> tuple[float, list]:
+    print(f"\nStarte Evolution für {label} ({num_staffeln} Staffeln)...")
+    population = []
+    for _ in range(POPULATION_SIZE):
+        ind = copy.deepcopy(teams)
+        random.shuffle(ind)
+        population.append(ind)
 
-def run_evolution(teams: list, num_staffeln: int, dist_matrix: dict, liga_name: str) -> float:
-    print(f"\n--- Starte Optimierung für {liga_name} ---")
-    print(f"Teams: {len(teams)} | Exakte Staffeln: {num_staffeln}")
+    best_overall_fitness = float('inf')
+    best_overall_individual = None
 
-    population = create_initial_population(teams)
-    best_fitness = float('inf')
-
-    for generation in range(GENERATIONS):
-        pop_with_fitness = [(ind, calculate_fitness(ind, dist_matrix, num_staffeln)) for ind in population]
+    for gen in range(GENERATIONS):
+        pop_with_fitness = [(ind, calculate_fitness(ind, num_staffeln, dist_matrix)) for ind in population]
         pop_with_fitness.sort(key=lambda x: x[1])
 
         current_best = pop_with_fitness[0][1]
-        if current_best < best_fitness:
-            best_fitness = current_best
+        if current_best < best_overall_fitness:
+            best_overall_fitness = current_best
+            best_overall_individual = pop_with_fitness[0][0]
 
-        if generation % 25 == 0 or generation == GENERATIONS - 1:
-            print(f"Generation {generation:3d} | Beste KM: {best_fitness:,.2f}".replace(",", "."))
+        if gen % 300 == 0:
+            print(f"  Generation {gen:4d} | Bester Wert: {current_best:,.2f} km")
 
-        next_population = []
         elite_count = int(POPULATION_SIZE * ELITISM_RATE)
-
-        for i in range(elite_count):
-            next_population.append(pop_with_fitness[i][0])
+        next_population = [ind for ind, fit in pop_with_fitness[:elite_count]]
 
         while len(next_population) < POPULATION_SIZE:
-            p1 = random.choice(pop_with_fitness[:int(POPULATION_SIZE/2)])[0] # Bevorzuge bessere Hälfte
-            p2 = random.choice(pop_with_fitness[:int(POPULATION_SIZE/2)])[0]
-
-            child = crossover(p1, p2)
-            mutate(child)
+            p1 = tournament_selection(pop_with_fitness, k=3)
+            p2 = tournament_selection(pop_with_fitness, k=3)
+            child = order_crossover(p1, p2)
+            swap_mutation(child, MUTATION_RATE)
             next_population.append(child)
 
         population = next_population
 
-    return best_fitness
+    print(f"-> Fertig! Bestes Ergebnis: {best_overall_fitness:,.2f} km")
+    return best_overall_fitness, best_overall_individual
 
+def calculate_optimal_staffeln(num_teams: int) -> int:
+    """Bestimmt die optimale Kapazitätsauslastung."""
+    return round(num_teams / 15.0)
+
+def calculate_away_trips(num_teams: int, num_staffeln: int) -> int:
+    """Bestimmt die Gesamtzahl der Auswärtsfahrten."""
+    teams_per_staffel = num_teams // num_staffeln
+    remainder = num_teams % num_staffeln
+    total_trips = 0
+    for s in range(num_staffeln):
+        size = teams_per_staffel + (1 if s < remainder else 0)
+        total_trips += size * (size - 1)
+    return total_trips
+
+def export_schedule_to_csv(kk_plan: list, kl_plan: list, num_kk: int, num_kl: int, filename: str):
+    """Speichert die Lösungsmenge."""
+    output_file = os.path.join(DATA_DIR, filename)
+    with open(output_file, mode='w', newline='', encoding='utf-8-sig') as f:
+        writer = csv.writer(f, delimiter=';')
+        writer.writerow(["Liga", "Staffel_Nr", "Vereinsname"])
+
+        # KK Export
+        teams_per_staffel_kk = len(kk_plan) // num_kk
+        remainder_kk = len(kk_plan) % num_kk
+        start_idx = 0
+        for s in range(num_kk):
+            size = teams_per_staffel_kk + (1 if s < remainder_kk else 0)
+            staffel_teams = kk_plan[start_idx : start_idx + size]
+            start_idx += size
+            for team in staffel_teams:
+                writer.writerow(["Kreisklasse", f"KK-Neu-{s+1:02d}", team])
+
+        # KL Export
+        teams_per_staffel_kl = len(kl_plan) // num_kl
+        remainder_kl = len(kl_plan) % num_kl
+        start_idx = 0
+        for s in range(num_kl):
+            size = teams_per_staffel_kl + (1 if s < remainder_kl else 0)
+            staffel_teams = kl_plan[start_idx : start_idx + size]
+            start_idx += size
+            for team in staffel_teams:
+                writer.writerow(["Kreisliga", f"KL-Neu-{s+1:02d}", team])
+    print(f"\n=> Spielplan gespeichert unter: {filename}")
 
 def main():
-    print("=== HFV Spielplan Optimierung ===")
+    print("=== HFV Spielplan Optimierung (SZENARIO-ANALYSE) ===")
     dist_matrix, kk_teams, kl_teams = load_data()
 
-    # 1. Kreisklasse optimieren (12 Staffeln)
-    best_kk_km = run_evolution(kk_teams, 12, dist_matrix, "Kreisklasse (KK)")
+    BASELINE_KM = 42253.02 #Baseline aus baseline_calculator.py
+    BASELINE_TRIPS = 3670
+    avg_km_baseline = BASELINE_KM / BASELINE_TRIPS
 
-    # 2. Kreisliga optimieren (8 Staffeln)
-    best_kl_km = run_evolution(kl_teams, 8, dist_matrix, "Kreisliga (KL)")
+    # SZENARIO A: 1:1 HFV-Struktur (Feste 12 KK, 8 KL)
+    print("\n" + "#"*55)
+    print(" SZENARIO A: 1:1 Vergleich (12 KK, 8 KL Staffeln)")
+    print("#"*55)
 
-    # 3. Ergebnisse zusammenführen
-    total_ea_km = best_kk_km + best_kl_km
-    baseline_km = 39749.60 # Die Baseline, die wir vorhin berechnet haben
+    num_kk_a, num_kl_a = 12, 8
+    best_kk_km_a, best_kk_plan_a = run_evolution(kk_teams, num_kk_a, dist_matrix, "Kreisklasse (Szen A)")
+    best_kl_km_a, best_kl_plan_a = run_evolution(kl_teams, num_kl_a, dist_matrix, "Kreisliga (Szen A)")
 
-    print("\n" + "=" * 50)
-    print("EVOLUTION ABGESCHLOSSEN!")
-    print(f"Baseline (Echter HFV-Plan): {baseline_km:,.2f} km".replace(",", "."))
-    print(f"EA Optimiert (Gesamt):      {total_ea_km:,.2f} km".replace(",", "."))
-    print("-" * 50)
+    export_schedule_to_csv(best_kk_plan_a, best_kl_plan_a, num_kk_a, num_kl_a, "optimized_schedule_szenario_A.csv")
+    total_ea_km_a = best_kk_km_a + best_kl_km_a
 
-    ersparnis = baseline_km - total_ea_km
-    prozent = (ersparnis / baseline_km) * 100
+    trips_a_kk = calculate_away_trips(len(kk_teams), num_kk_a)
+    trips_a_kl = calculate_away_trips(len(kl_teams), num_kl_a)
+    total_trips_a = trips_a_kk + trips_a_kl
+    avg_km_ea_a = total_ea_km_a / total_trips_a
 
-    if ersparnis > 0:
-        print(f"ERFOLG! Ersparnis: {ersparnis:,.2f} km ({prozent:.1f} % weniger Fahrtweg!)".replace(",", "."))
-    else:
-        print("Der Algorithmus muss länger trainieren (mehr Generationen), um die Baseline zu schlagen.")
-    print("=" * 50)
+    # SZENARIO B: Dynamische Ligenstruktur (Dynamische 14-16er Regel)
+    print("\n" + "#"*55)
+    print(" SZENARIO B: Konsolidierung (Regelkonforme Auffüllung)")
+    print("#"*55)
 
+    num_kk_b = calculate_optimal_staffeln(len(kk_teams))
+    num_kl_b = calculate_optimal_staffeln(len(kl_teams))
+
+    best_kk_km_b, best_kk_plan_b = run_evolution(kk_teams, num_kk_b, dist_matrix, "Kreisklasse (Szen B)")
+    best_kl_km_b, best_kl_plan_b = run_evolution(kl_teams, num_kl_b, dist_matrix, "Kreisliga (Szen B)")
+
+    export_schedule_to_csv(best_kk_plan_b, best_kl_plan_b, num_kk_b, num_kl_b, "optimized_schedule_szenario_B.csv")
+    total_ea_km_b = best_kk_km_b + best_kl_km_b
+
+    trips_b_kk = calculate_away_trips(len(kk_teams), num_kk_b)
+    trips_b_kl = calculate_away_trips(len(kl_teams), num_kl_b)
+    total_trips_b = trips_b_kk + trips_b_kl
+    avg_km_ea_b = total_ea_km_b / total_trips_b
+
+    # Ergebnisse beider Szenarien
+    print("\n" + "=" * 65)
+    print(" FINALER STATISTIK-REPORT (BEIDE SZENARIEN)")
+    print("=" * 65)
+    print(f"HFV BASELINE: {BASELINE_KM:,.2f} km bei {BASELINE_TRIPS} Fahrten (Ø {avg_km_baseline:.2f} km/Fahrt)\n")
+
+    print("--- SZENARIO A: 1:1 HFV Ligenstruktur (12 KK, 8 KL) ---")
+    print(f"Gesamtkilometer:  {total_ea_km_a:,.2f} km")
+    print(f"Auswärtsfahrten:  {total_trips_a} (Gleiche Staffelanzahl)")
+    print(f"Ø Fahrtstrecke:   {avg_km_ea_a:.2f} km/Fahrt")
+    print(f"-> Absolute Ersparnis: {BASELINE_KM - total_ea_km_a:,.2f} km ({(BASELINE_KM - total_ea_km_a)/BASELINE_KM * 100:.2f} %)\n")
+
+    print("--- SZENARIO B: Dynamische Ligenstruktur (14-16er Regel) ---")
+    print(f"Gesamtkilometer:  {total_ea_km_b:,.2f} km")
+    print(f"Auswärtsfahrten:  {total_trips_b} (Mehraufwand: +{total_trips_b - BASELINE_TRIPS} Fahrten)")
+    print(f"Ø Fahrtstrecke:   {avg_km_ea_b:.2f} km/Fahrt")
+    print(f"-> Relativer Effizienz-Gewinn pro Fahrt: {(avg_km_baseline - avg_km_ea_b)/avg_km_baseline * 100:.2f} %")
+    print("=" * 65)
 
 if __name__ == "__main__":
     main()

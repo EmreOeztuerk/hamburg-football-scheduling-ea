@@ -86,7 +86,7 @@ def scrape_staffel(url):
         return staffel_label, []
 
 def main():
-    """Hauptausführungslogik des Scrapers."""
+    """Hauptfunktion zur Ausführung des Scrapers."""
     print(f"Starte Scraper. Speichere in: {CSV_PATH}")
 
     try:

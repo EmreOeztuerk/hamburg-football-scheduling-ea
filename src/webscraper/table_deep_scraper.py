@@ -13,13 +13,10 @@ import csv
 import os
 import re
 
-# --- PFAD-RESOLUTION ---
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-SRC_DIR = os.path.dirname(CURRENT_DIR)
-PROJECT_ROOT = os.path.dirname(SRC_DIR)
-
-DATA_DIR = os.path.join(PROJECT_ROOT, "data")
-OUTPUT_CSV = os.path.join(DATA_DIR, "hamburg_vereine_addresses_final.csv")
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Accept-Language': 'de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7'
+}
 
 # Deine Liste der Tabellen-URLs
 URLS = [
@@ -45,10 +42,12 @@ URLS = [
     "https://www.fussball.de/spieltagsuebersicht/kl-08-kreisebene-hamburg-kreisliga-herren-saison2526-hamburg/-/staffel/02TESB4FMK00000EVS5489BTVTLPPK10-G#!/section/table/"
 ]
 
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    'Accept-Language': 'de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7'
-}
+# Pfadkonfiguration
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+SRC_DIR = os.path.dirname(CURRENT_DIR)
+PROJECT_ROOT = os.path.dirname(SRC_DIR)
+DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+OUTPUT_CSV = os.path.join(DATA_DIR, "hamburg_vereine_addresses_final.csv")
 
 def extract_address_from_profile(session, profile_url: str) -> str:
     """Lädt das Mannschaftsprofil und sucht nach PLZ + Ort."""
@@ -80,7 +79,7 @@ def extract_address_from_profile(session, profile_url: str) -> str:
 
 
 def main():
-    print("=== fussball.de Direkter Tabellen-Scraper ===")
+    print("=== fussball.de Direkter Tabellen-Scraper. Starte Adress-Extraktion. ===")
     session = requests.Session()
 
     # Gedächtnis für bereits gefundene Mannschaften
