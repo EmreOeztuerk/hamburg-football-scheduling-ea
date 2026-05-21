@@ -29,9 +29,7 @@ Dieses Projekt implementiert eine End-to-End-Pipeline:
 
 - Scraping: Selenium, BeautifulSoup
 
-- Geodata: Geopy (OpenStreetMap/Nominatim)
-
-- Optimization: Custom Evolutionary Engine (basiert auf den Konzepten des WP "Evolutionäre Algorithmen")
+- Geodata: OpenStreetMap/Nominatim
 
 - Data Handling: Pandas, NumPy
 
