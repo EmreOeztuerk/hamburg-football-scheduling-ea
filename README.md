@@ -27,7 +27,7 @@ Dieses Projekt implementiert eine End-to-End-Pipeline:
 # 🛠 Tech Stack
 - Language: Python 3.12
 
-- Scraping: Selenium, BeautifulSoup
+- Scraping: BeautifulSoup
 
 - Geodata: OpenStreetMap/Nominatim
 
