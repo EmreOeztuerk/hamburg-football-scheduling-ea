@@ -1,11 +1,7 @@
 """
-Statistische Analyse des Konvergenzverhaltens (Evolutionärer Algorithmus).
-
-Das Modul führt Replikationsstudien für distinkte Mutationsraten durch
-und aggregiert die Resultate in Standardabweichungs-Graphen zur Methodenevaluation.
+Statistische Analyse des Konvergenzverhaltens mit dynamischer Mutation.
 """
 
-import csv
 import os
 import random
 import copy
@@ -15,7 +11,7 @@ import matplotlib.ticker as ticker
 
 from ea_optimizer import (
     load_data, calculate_fitness, tournament_selection,
-    order_crossover, swap_mutation, POPULATION_SIZE, ELITISM_RATE
+    order_crossover, swap_mutation
 )
 
 # Pfadkonfiguration
@@ -24,33 +20,48 @@ SRC_DIR = os.path.dirname(CURRENT_DIR)
 PROJECT_ROOT = os.path.dirname(SRC_DIR)
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 
-# Parameter
-GENERATIONS = 1500
-RUNS_PER_SETTING = 5
-MUTATION_TESTS = [0.05, 0.20, 0.50]
-COLORS = ['crimson', 'royalblue', 'forestgreen']
-LABELS = ['5 % Mutation', '20 % Mutation', '50 % Mutation']
+# NEUE Parameter (angepasst an den finalen Run)
+POPULATION_SIZE = 300
+GENERATIONS = 5000
+ELITISM_RATE = 0.05
+MUTATION_RATE_MIN = 0.1
+MUTATION_RATE_MAX = 0.85
+STAGNATION_LIMIT = 50
 
-def run_experiment_history(teams: list, num_staffeln: int, dist_matrix: dict, mutation_rate: float) -> list:
-    """Führt eine Iteration aus und protokolliert die Konvergenzhistorie."""
+def run_experiment_history(teams: list, num_staffeln: int, dist_matrix: dict) -> tuple[list, list]:
+    """Führt eine Iteration aus und protokolliert Fitness UND Mutationsrate."""
     population = []
     for _ in range(POPULATION_SIZE):
         ind = copy.deepcopy(teams)
         random.shuffle(ind)
         population.append(ind)
 
-    history = []
+    history_fitness = []
+    history_mutation = []
+
     best_overall = float('inf')
+    current_mutation_rate = MUTATION_RATE_MIN
+    stagnation_counter = 0
 
     for gen in range(GENERATIONS):
         pop_with_fitness = [(ind, calculate_fitness(ind, num_staffeln, dist_matrix)) for ind in population]
         pop_with_fitness.sort(key=lambda x: x[1])
 
         current_best = pop_with_fitness[0][1]
+
         if current_best < best_overall:
             best_overall = current_best
+            stagnation_counter = 0
+            current_mutation_rate = MUTATION_RATE_MIN
+        else:
+            stagnation_counter += 1
 
-        history.append(current_best)
+        if stagnation_counter > STAGNATION_LIMIT:
+            current_mutation_rate = min(MUTATION_RATE_MAX, current_mutation_rate + 0.15)
+            stagnation_counter = 0
+
+        history_fitness.append(current_best)
+        history_mutation.append(current_mutation_rate)
 
         elite_count = int(POPULATION_SIZE * ELITISM_RATE)
         next_population = [ind for ind, fit in pop_with_fitness[:elite_count]]
@@ -59,74 +70,53 @@ def run_experiment_history(teams: list, num_staffeln: int, dist_matrix: dict, mu
             p1 = tournament_selection(pop_with_fitness, k=3)
             p2 = tournament_selection(pop_with_fitness, k=3)
             child = order_crossover(p1, p2)
-            swap_mutation(child, mutation_rate)
+            swap_mutation(child, current_mutation_rate)
             next_population.append(child)
 
         population = next_population
-    return history
 
-def generate_single_plot(teams: list, num_staffeln: int, dist_matrix: dict, title: str, filename: str):
-    """Aggregiert die Datenpunkte und erstellt den statistischen Plot."""
-    print(f"\nGeneriere Plot: {title}...")
-    plt.figure(figsize=(10, 6))
+    return history_fitness, history_mutation
 
-    for idx, rate in enumerate(MUTATION_TESTS):
-        print(f"  -> Teste {rate*100}% Mutation ({RUNS_PER_SETTING} Runs)...")
-        runs_data = []
-        for run in range(RUNS_PER_SETTING):
-            runs_data.append(run_experiment_history(teams, num_staffeln, dist_matrix, rate))
+def generate_dual_plot(teams: list, num_staffeln: int, dist_matrix: dict, title: str, filename: str):
+    """Erstellt den Plot mit zwei Y-Achsen (Fitness und Mutation)."""
+    print(f"\nGeneriere Dual-Plot: {title}...")
 
-        runs_array = np.array(runs_data)
-        mean_history = np.mean(runs_array, axis=0)
-        std_history = np.std(runs_array, axis=0)
-        generations_x = range(len(mean_history))
+    fit_history, mut_history = run_experiment_history(teams, num_staffeln, dist_matrix)
 
-        plt.plot(generations_x, mean_history, label=LABELS[idx], color=COLORS[idx], linewidth=2.0)
-        plt.fill_between(generations_x, mean_history - std_history, mean_history + std_history, color=COLORS[idx], alpha=0.15)
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+
+    # Achse 1: Fitness (Kilometer)
+    color1 = '#0072B2'
+    ax1.set_xlabel("Generationen", fontsize=12)
+    ax1.set_ylabel("Ökologischer Fußabdruck (Gesamtkilometer)", color=color1, fontsize=12)
+    ax1.plot(range(GENERATIONS), fit_history, color=color1, linewidth=2.0, label="Beste Fitness")
+    ax1.tick_params(axis='y', labelcolor=color1)
+    ax1.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, p: format(int(x), ',').replace(',', '.')))
+    ax1.grid(True, linestyle='--', alpha=0.7)
+
+    # Achse 2: Mutationsrate
+    ax2 = ax1.twinx()
+    color2 = '#D55E00'
+    ax2.set_ylabel("Dynamische Mutationsrate", color=color2, fontsize=12)
+    ax2.plot(range(GENERATIONS), mut_history, color=color2, linewidth=1.0, alpha=0.6, label="Mutationsrate")
+    ax2.tick_params(axis='y', labelcolor=color2)
+    ax2.set_ylim(0, 1.0)
 
     plt.title(title, fontsize=14, fontweight='bold', pad=15)
-    plt.xlabel("Generationen", fontsize=12)
-    plt.ylabel("Ökologischer Fußabdruck (Gesamtkilometer)", fontsize=12)
-    plt.grid(True, linestyle='--', alpha=0.7)
-    plt.legend(loc="upper right", fontsize=11)
+    fig.tight_layout()
 
-    # Y-Achse deutsch formatieren
-    ax = plt.gca()
-    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, p: format(int(x), ',').replace(',', '.')))
-
-    plt.tight_layout()
     output_path = os.path.join(DATA_DIR, filename)
     plt.savefig(output_path, dpi=300)
-    plt.close() # Schließt das Fenster sauber, damit der nächste Plot frisch startet
+    plt.close()
     print(f"ERFOLG: Gespeichert unter {filename}")
 
 def main():
-    print("=== EA Konvergenz-Evaluation (Einzelplots) ===")
-    print("Hinweis: Dauert lange...\n")
+    print("=== EA Konvergenz-Evaluation (Dual-Plots) ===")
     dist_matrix, kk_teams, kl_teams = load_data()
 
-    # 1. Kreisklasse - Szenario A
-    generate_single_plot(
-        kk_teams, 12, dist_matrix,
-        "Konvergenz Kreisklasse (Szenario A: 12 Staffeln)",
-        "konvergenz_szenario_a_kk.png"
-    )
-
-    # 2. Kreisklasse - Szenario B
-    generate_single_plot(
-        kk_teams, 11, dist_matrix,
-        "Konvergenz Kreisklasse (Szenario B: 11 Staffeln)",
-        "konvergenz_szenario_b_kk.png"
-    )
-
-    # 3. Kreisliga - (Gilt für A und B, da beide 8 Staffeln haben)
-    generate_single_plot(
-        kl_teams, 8, dist_matrix,
-        "Konvergenz Kreisliga (8 Staffeln)",
-        "konvergenz_kl.png"
-    )
-
-    print("\nALLE PLOTS ERFOLGREICH GENERIERT!")
+    generate_dual_plot(kk_teams, 12, dist_matrix, "Konvergenz Kreisklasse (Szenario A)", "konvergenz_szenario_a_kk.png")
+    generate_dual_plot(kk_teams, 11, dist_matrix, "Konvergenz Kreisklasse (Szenario B)", "konvergenz_szenario_b_kk.png")
+    generate_dual_plot(kl_teams, 8, dist_matrix, "Konvergenz Kreisliga", "konvergenz_kl.png")
 
 if __name__ == "__main__":
     main()

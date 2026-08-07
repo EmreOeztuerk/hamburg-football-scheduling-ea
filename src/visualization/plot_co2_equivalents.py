@@ -54,7 +54,7 @@ DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 
 # Brechnungsgrundlage (Szenario A vs. Baseline)
 BASELINE_KM = 42253.02
-EA_KM = 39687.45
+EA_KM = 37860.02
 SAVED_KM = BASELINE_KM - EA_KM
 
 # 4 PKW pro Auswärtsmannschaft, 0.15 kg CO2 pro gefahrenem Kilometer

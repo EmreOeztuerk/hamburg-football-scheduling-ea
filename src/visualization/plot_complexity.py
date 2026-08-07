@@ -85,7 +85,7 @@ def main():
     age_of_universe = 13_800_000_000
 
     # Laufzeit unseres EA (Großzügig auf 60 Sekunden gerundet für den Plot)
-    ea_runtime_seconds = 60
+    ea_runtime_seconds = 300
     ea_runtime_years = ea_runtime_seconds / (60 * 60 * 24 * 365)
 
     print(f"Brute-Force Dauer (Jahre): {years_needed:.2e}")

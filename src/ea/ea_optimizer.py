@@ -22,11 +22,16 @@ MATRIX_CSV = os.path.join(DATA_DIR, "distance_matrix.csv")
 TEAMS_CSV = os.path.join(DATA_DIR, "hamburg_vereine_geocoded_final.csv")
 
 # EA-Parameter
-POPULATION_SIZE = 50
-GENERATIONS = 1500
+POPULATION_SIZE = 300
+GENERATIONS = 5000
 MUTATION_RATE = 0.5
-ELITISM_RATE = 0.1
+ELITISM_RATE = 0.05
 PENALTY_KM = 5000.0
+
+# Dynamische Mutationsraten
+MUTATION_RATE_MIN = 0.1   # Startwert: Lässt guten Crossover-Ergebnissen anfangs Raum
+MUTATION_RATE_MAX = 0.85  # Maximalwert: Erzwingt Ausbruch aus lokalen Optima
+STAGNATION_LIMIT = 50     # Anzahl der Generationen ohne Verbesserung bis zum Eingriff
 
 def load_data() -> tuple[dict, list, list]:
     dist_matrix = {}
@@ -103,11 +108,12 @@ def order_crossover(p1: list, p2: list) -> list:
             p2_idx += 1
     return child
 
-def swap_mutation(individual: list, rate: float):
+def swap_mutation(individual: list, current_rate: float):
     """Implementiert Swap-Mutation zur Exploration des Suchraums."""
-    if random.random() < rate:
+    if random.random() < current_rate:
         idx1, idx2 = random.sample(range(len(individual)), 2)
         individual[idx1], individual[idx2] = individual[idx2], individual[idx1]
+
 
 def run_evolution(teams: list, num_staffeln: int, dist_matrix: dict, label: str) -> tuple[float, list]:
     print(f"\nStarte Evolution für {label} ({num_staffeln} Staffeln)...")
@@ -120,17 +126,36 @@ def run_evolution(teams: list, num_staffeln: int, dist_matrix: dict, label: str)
     best_overall_fitness = float('inf')
     best_overall_individual = None
 
+    # Neue Tracking-Variablen für dynamische Mutation
+    current_mutation_rate = MUTATION_RATE_MIN
+    stagnation_counter = 0
+
     for gen in range(GENERATIONS):
         pop_with_fitness = [(ind, calculate_fitness(ind, num_staffeln, dist_matrix)) for ind in population]
         pop_with_fitness.sort(key=lambda x: x[1])
 
         current_best = pop_with_fitness[0][1]
+
+        # Stagnations-Prüfung
         if current_best < best_overall_fitness:
             best_overall_fitness = current_best
             best_overall_individual = pop_with_fitness[0][0]
+            # Reset der Mutation bei erfolgreichem Fund
+            stagnation_counter = 0
+            current_mutation_rate = MUTATION_RATE_MIN
+        else:
+            stagnation_counter += 1
+
+        # Dynamische Anpassung nach Zhu (2022)
+        if stagnation_counter > STAGNATION_LIMIT:
+            current_mutation_rate = min(MUTATION_RATE_MAX, current_mutation_rate + 0.15)
+            stagnation_counter = 0  # Counter resetten, um stufenweise zu erhöhen
+            # Optional: Einkommentieren, um den Eingriff im Terminal zu sehen
+            # print(f"  [Lokales Optimum] Erhöhe Mutationsrate auf {current_mutation_rate:.2f}")
 
         if gen % 300 == 0:
-            print(f"  Generation {gen:4d} | Bester Wert: {current_best:,.2f} km")
+            print(
+                f"  Generation {gen:4d} | Bester Wert: {current_best:,.2f} km | Mut-Rate: {current_mutation_rate:.2f}")
 
         elite_count = int(POPULATION_SIZE * ELITISM_RATE)
         next_population = [ind for ind, fit in pop_with_fitness[:elite_count]]
@@ -139,10 +164,16 @@ def run_evolution(teams: list, num_staffeln: int, dist_matrix: dict, label: str)
             p1 = tournament_selection(pop_with_fitness, k=3)
             p2 = tournament_selection(pop_with_fitness, k=3)
             child = order_crossover(p1, p2)
-            swap_mutation(child, MUTATION_RATE)
+
+            # Hier die dynamische Rate übergeben
+            swap_mutation(child, current_mutation_rate)
+
             next_population.append(child)
 
         population = next_population
+
+    print(f"-> Fertig! Bestes Ergebnis: {best_overall_fitness:,.2f} km")
+    return best_overall_fitness, best_overall_individual
 
     print(f"-> Fertig! Bestes Ergebnis: {best_overall_fitness:,.2f} km")
     return best_overall_fitness, best_overall_individual
