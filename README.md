@@ -2,7 +2,7 @@
 
 Dieses Repository enthält den Prototyp für meine Bachelorarbeit am Department Informatik der HAW Hamburg unter der Betreuung von Prof. Dr.-Ing. Christian Lins.
 
-Das System nutzt Evolutionäre Algorithmen (EA), um hochkomplexe Ressourcenkonflikte bei der Spielzeitplanung auf Hamburger Sportanlagen automatisiert und fair zu lösen.
+Das System nutzt einen Genetischen Algorithmus (GA), um hochkomplexe Ressourcenkonflikte bei der Spielzeitplanung auf Hamburger Sportanlagen automatisiert und fair zu lösen.
 
 #  Problemstellung
 In Hamburg teilen sich oft bis zu 20 Mannschaften eine einzige Sportanlage. Während der Hamburger Fußball-Verband (HFV) die regionalen Staffeln festlegt, obliegt die konkrete Zeit- und Platzverteilung den Vereinen. Manuelle Planungen führen oft zu:
