@@ -1,9 +1,7 @@
 """
 Visualisierung der Algorithmusergebnisse.
-
-Liest die generierten Cluster beider Szenarien aus und transformiert sie
-in interaktive Karten-Layer. Verwendet dieselbe deterministische
-Farbkodierung wie die Baseline-Visualisierung für konsistente Vergleiche.
+Liest die generierten Cluster beider Szenarien aus und transformiert sie in interaktive Karten-Layer.
+Verwendet Esri Light Gray Canvas für eine saubere, helle Hintergrundkarte ohne API-Key / Sperre.
 """
 
 import csv
@@ -13,7 +11,6 @@ import random
 import folium
 from branca.element import Template, MacroElement
 
-# Pfadkonfiguration
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 SRC_DIR = os.path.dirname(CURRENT_DIR)
 PROJECT_ROOT = os.path.dirname(SRC_DIR)
@@ -34,42 +31,27 @@ SCENARIOS = [
     }
 ]
 
-# Identische Farbpalette wie in der Baseline-Visualisierung
 COLORS = ['#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
           '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4',
           '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000',
           '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9']
 
 def get_color_for_staffel(staffel_name: str) -> str:
-    """
-    Implementiert eine deterministische Farbkodierung.
-    Stellt sicher, dass z.B. KK-01 (Baseline) und KK-Opt-01 (EA)
-    die exakt identische Farbe erhalten, während Ligen (KK vs. KL)
-    strikt voneinander getrennt bleiben.
-    """
     match = re.search(r'\d+', staffel_name)
     if not match:
         return COLORS[0]
-
     num = int(match.group())
-
-    # Kreisklasse (KK): Nutzt die Farb-Indizes 0 bis 11
     if "KK" in staffel_name:
         idx = num - 1
-    # Kreisliga (KL): Nutzt die Farb-Indizes 12 bis 19
     elif "KL" in staffel_name:
         idx = 11 + num
     else:
         idx = 0
-
-    # Fallback-Sicherung gegen IndexError
     if idx >= len(COLORS):
         idx = idx % len(COLORS)
-
     return COLORS[idx]
 
 def load_geodata() -> dict:
-    """Extrahiert die Basis-Koordinaten aus dem Geocoding-Export."""
     coords = {}
     with open(TEAMS_GEO_CSV, mode='r', encoding='utf-8-sig') as f:
         reader = csv.reader(f, delimiter=';')
@@ -80,10 +62,8 @@ def load_geodata() -> dict:
     return coords
 
 def generate_map_for_scenario(scenario: dict, coords: dict):
-    """Generiert die HTML-Karte für ein spezifisches Evaluationsszenario."""
     if not os.path.exists(scenario["input"]):
         return
-
     staffeln = {}
     with open(scenario["input"], mode='r', encoding='utf-8-sig') as f:
         reader = csv.reader(f, delimiter=';')
@@ -94,22 +74,24 @@ def generate_map_for_scenario(scenario: dict, coords: dict):
                 staffeln[staffel] = []
             staffeln[staffel].append(team)
 
-    m = folium.Map(location=[53.5511, 9.9937], zoom_start=11, tiles="CartoDB positron")
-    legend_items = []
+    # Esri Light Gray Canvas Tile-Server (stabil, frei nutzbar, dezent)
+    m = folium.Map(
+        location=[53.5511, 9.9937],
+        zoom_start=11,
+        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+        attr="Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ"
+    )
 
+    legend_items = []
     for staffel_name, teams in sorted(staffeln.items()):
         staffel_color = get_color_for_staffel(staffel_name)
         legend_items.append((staffel_name, staffel_color))
-
         fg = folium.FeatureGroup(name=f"{staffel_name} (EA)")
         for team in teams:
             if team in coords:
                 lat, lon = coords[team]
-
-                # Stochastisches Jittering
                 jitter_lat = random.uniform(-0.0003, 0.0003)
                 jitter_lon = random.uniform(-0.0003, 0.0003)
-
                 folium.CircleMarker(
                     location=[lat + jitter_lat, lon + jitter_lon],
                     radius=8,
@@ -124,7 +106,6 @@ def generate_map_for_scenario(scenario: dict, coords: dict):
 
     folium.LayerControl().add_to(m)
 
-    # HTML-Struktur der Legende
     legend_html = f'''
     {{% macro html(this, kwargs) %}}
     <div style="
@@ -148,21 +129,17 @@ def generate_map_for_scenario(scenario: dict, coords: dict):
     </div>
     {% endmacro %}
     '''
-
     macro = MacroElement()
     macro._template = Template(legend_html)
     m.get_root().add_child(macro)
-
     m.save(scenario["output"])
     print(f"Geovisualisierung abgeschlossen: {scenario['output']}")
 
 def main():
     print("Initialisiere Kartengenerierung für Algorithmusergebnisse.")
     coords = load_geodata()
-
     for scenario in SCENARIOS:
         generate_map_for_scenario(scenario, coords)
-
     print("Alle Visualisierungen erfolgreich verarbeitet.")
 
 if __name__ == "__main__":

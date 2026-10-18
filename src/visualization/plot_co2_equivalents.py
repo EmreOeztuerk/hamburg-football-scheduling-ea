@@ -54,11 +54,11 @@ DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 
 # Brechnungsgrundlage (Szenario A vs. Baseline)
 BASELINE_KM = 42253.02
-EA_KM = 37860.02
+EA_KM = 38077.62
 SAVED_KM = BASELINE_KM - EA_KM
 
-# 4 PKW pro Auswärtsmannschaft, 0.15 kg CO2 pro gefahrenem Kilometer
-SAVED_CO2_KG = SAVED_KM * 4 * 0.15
+# 4 PKW pro Auswärtsmannschaft, 0.164 kg CO2 pro gefahrenem Kilometer
+SAVED_CO2_KG = SAVED_KM * 4 * 0.164
 
 # Äquivalent-Faktoren (kg CO2 pro Einheit)
 FACTOR_TREE = 12.5  # Eine ausgewachsene Buche bindet ca. 12.5 kg CO2 pro Jahr

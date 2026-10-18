@@ -32,12 +32,16 @@ ELBTUNNEL = {"lat": 53.5360, "lon": 9.9230}         # A7
 ELBBRUECKEN = {"lat": 53.5340, "lon": 10.0220}       # B4 / B75 (Zentrum)
 NORDERELBBRUECKE = {"lat": 53.5286, "lon": 10.0371}  # A1 (Ost-Umfahrung)
 
-# Empirischer Umwegfaktor (Straßenverlauf ist nie exakte Luftlinie)
-DETOUR_FACTOR = 1.3
+EARTH_RADIUS_KM = 6371.0
+DETOUR_FACTOR = 1.3  # Empirischer Umwegfaktor für Straßenverlauf vs. Luftlinie
+
+# Elb-Approximationsgerade: y = m * (lon - lon_ref) + lat_ref
+ELBE_SLOPE = -0.2
+ELBE_LON_REF = 10.05
+ELBE_LAT_REF = 53.50
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Berechnet die Großkreisdistanz (Luftlinie) in km zwischen zwei GPS-Punkten."""
-    R = 6371.0
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     delta_phi = math.radians(lat2 - lat1)
     delta_lambda = math.radians(lon2 - lon1)
@@ -46,7 +50,7 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0)**2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
-    return R * c
+    return EARTH_RADIUS_KM * c
 
 def is_south_of_elbe(lat: float, lon: float) -> bool:
     """
@@ -54,7 +58,7 @@ def is_south_of_elbe(lat: float, lon: float) -> bool:
     Approximation des Flussverlaufs als lineare Funktion: y = m*x + b
     Grobe Linie: Von Rothenburgsort bis Blankenese.
     """
-    lat_river = -0.2 * (lon - 10.05) + 53.50
+    lat_river = ELBE_SLOPE * (lon - ELBE_LON_REF) + ELBE_LAT_REF
     return lat < lat_river
 
 def calculate_realistic_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
