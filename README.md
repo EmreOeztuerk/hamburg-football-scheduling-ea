@@ -26,7 +26,7 @@ Das entwickelte *Decision Support System* (DSS) implementiert eine vollständig 
 3. **Evolutionäre Optimierung:**
    * Lösung des *Capacitated Clustering Problems* (CCP) mittels Genetischem Algorithmus.
    * **Permutationsbasierte Kodierung:** Garantiert die strukturelle Einhaltung der Staffelkapazitäten.
-   * **Penalty-Mechanismus:** Dynamisches Strafgewicht ($W = 5000\text{ km}$) zur verlässlichen Vermeidung vereinsinterner Duelle.
+   * **Penalty-Mechanismus:** Dynamisches Strafgewicht ($W = 50000\text{ km}$) zur verlässlichen Vermeidung vereinsinterner Duelle.
 4. **Evaluation & Ökologische Bilanzierung:**
    * Benchmark zwischen der Ist-Baseline und zwei Optimierungsszenarien (Szenario A: Kapazitäts-Erhalt; Szenario B: Ausgeglichene Staffelgrößen).
    * Quantifizierung der Distanzgewinne und Umrechnung in $\text{CO}_2\text{e}$-Minderungen (UBA-Emissionsfaktor).
@@ -47,9 +47,9 @@ Das entwickelte *Decision Support System* (DSS) implementiert eine vollständig 
 
 | Szenario | Gesamtfahrtstrecke (km) | Einsparung vs. Baseline | $\text{CO}_2\text{e}$-Reduktion (Saison) |
 | :--- | :---: | :---: | :---: |
-| **Ist-Baseline (HFV)** | 42.253,02 km | — | — |
-| **Szenario A (Struktur-Erhalt)** | **38.077,62 km** | **-9,88 %** (-4.175,40 km) | **-2.505 kg $\text{CO}_2\text{e}$** |
-| **Szenario B (Kapa-Ausgleich)** | **40.886,91 km** | **-7,73 %** (ø km/Fahrt) | **-820 kg $\text{CO}_2\text{e}$** |
+| **Ist-Baseline (HFV)** | 39.768,93 km | — | — |
+| **Szenario A (Struktur-Erhalt)** | **37.860,02 km** | **-4,80 %** (-1.908,91 km) | **-1.756 kg $\text{CO}_2\text{e}$** (-1,76 t) |
+| **Szenario B (Kapa-Ausgleich)** | **40.264,90 km** | **-9,12 %** (ø km/Fahrt)* | *(10,46 km vs. 11,51 km/Sp.)* |
 
 ---
 
