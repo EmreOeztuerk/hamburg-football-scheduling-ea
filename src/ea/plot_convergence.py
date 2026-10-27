@@ -1,32 +1,38 @@
 """
-Statistische Analyse des Konvergenzverhaltens mit dynamischer Mutation.
+Statistische Analyse des Konvergenzverhaltens mit dynamischer Mutation
 """
 
 import os
+import sys
+import json
 import random
 import copy
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-from ea_optimizer import (
-    load_data, calculate_fitness, tournament_selection,
-    order_crossover, swap_mutation
-)
 
+# =============================================================================
+# PFAD-KONFIGURATION & IMPORTS
+# =============================================================================
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 SRC_DIR = os.path.dirname(CURRENT_DIR)
 PROJECT_ROOT = os.path.dirname(SRC_DIR)
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+EA_DIR = os.path.join(SRC_DIR, "ea")
 
-POPULATION_SIZE = 300
-GENERATIONS = 5000
-ELITISM_RATE = 0.05
-MUTATION_RATE_MIN = 0.1
-MUTATION_RATE_MAX = 0.85
-STAGNATION_LIMIT = 50
+if EA_DIR not in sys.path:
+    sys.path.append(EA_DIR)
 
-def run_experiment_history(teams: list, staffel_sizes: list, dist_matrix: dict) -> tuple[list, list]:
-    """Führt eine Iteration aus und protokolliert Fitness UND Mutationsrate."""
+from ea_optimizer import (
+    load_data, calculate_fitness, tournament_selection,
+    order_crossover, swap_mutation, POPULATION_SIZE,
+    GENERATIONS, ELITISM_RATE, MUTATION_RATE_MIN,
+    MUTATION_RATE_MAX, STAGNATION_LIMIT
+)
+
+
+def run_ea_experiment(teams: list, staffel_sizes: list, dist_matrix: dict) -> tuple[list, list]:
+    """Führt einen Live-EA-Lauf aus und zeichnet Fitness und Mutationsrate auf."""
     population = []
     for _ in range(POPULATION_SIZE):
         ind = copy.deepcopy(teams)
@@ -58,6 +64,9 @@ def run_experiment_history(teams: list, staffel_sizes: list, dist_matrix: dict) 
         history_fitness.append(current_best)
         history_mutation.append(current_mutation_rate)
 
+        if gen % 1000 == 0 or gen == GENERATIONS - 1:
+            print(f" -> Gen {gen:4d}/{GENERATIONS} | Bestwert: {current_best:,.2f} km | Mut-Rate: {current_mutation_rate:.2f}")
+
         elite_count = max(1, int(POPULATION_SIZE * ELITISM_RATE))
         next_population = [ind for ind, fit in pop_with_fitness[:elite_count]]
 
@@ -72,17 +81,17 @@ def run_experiment_history(teams: list, staffel_sizes: list, dist_matrix: dict) 
 
     return history_fitness, history_mutation
 
-def generate_dual_plot(teams: list, staffel_sizes: list, dist_matrix: dict, title: str, filename: str):
+
+def generate_dual_plot(fit_history: list, mut_history: list, title: str, filename: str):
     """Erstellt den Plot mit zwei Y-Achsen (Fitness und Mutation)."""
     print(f"\nGeneriere Dual-Plot: {title}...")
-    fit_history, mut_history = run_experiment_history(teams, staffel_sizes, dist_matrix)
 
     fig, ax1 = plt.subplots(figsize=(10, 6))
 
     color1 = '#0072B2'
     ax1.set_xlabel("Generationen", fontsize=12)
     ax1.set_ylabel("Ökologischer Fußabdruck (Gesamtkilometer)", color=color1, fontsize=12)
-    ax1.plot(range(GENERATIONS), fit_history, color=color1, linewidth=2.0, label="Beste Fitness")
+    ax1.plot(range(len(fit_history)), fit_history, color=color1, linewidth=2.0, label="Beste Fitness")
     ax1.tick_params(axis='y', labelcolor=color1)
     ax1.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, p: format(int(x), ',').replace(',', '.')))
     ax1.grid(True, linestyle='--', alpha=0.7)
@@ -90,7 +99,7 @@ def generate_dual_plot(teams: list, staffel_sizes: list, dist_matrix: dict, titl
     ax2 = ax1.twinx()
     color2 = '#D55E00'
     ax2.set_ylabel("Dynamische Mutationsrate", color=color2, fontsize=12)
-    ax2.plot(range(GENERATIONS), mut_history, color=color2, linewidth=1.0, alpha=0.6, label="Mutationsrate")
+    ax2.plot(range(len(mut_history)), mut_history, color=color2, linewidth=1.0, alpha=0.6, label="Mutationsrate")
     ax2.tick_params(axis='y', labelcolor=color2)
     ax2.set_ylim(0, 1.0)
 
@@ -99,18 +108,32 @@ def generate_dual_plot(teams: list, staffel_sizes: list, dist_matrix: dict, titl
     output_path = os.path.join(DATA_DIR, filename)
     plt.savefig(output_path, dpi=300)
     plt.close()
-    print(f"ERFOLG: Gespeichert unter {filename}")
+    print(f"✓ ERFOLG: Gespeichert unter {output_path}\n")
+
 
 def main():
     print("=== EA Konvergenz-Evaluation (Dual-Plots) ===")
     dist_matrix, kk_teams, kl_teams, kk_caps_a, kl_caps_a = load_data()
 
-    # Kapazitäten für Szenario B
-    kk_caps_b = [15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14]
+    # --- 1. Szenario A (Kreisklasse) ---
+    print("Starte Live-Lauf für Szenario A...")
+    fit_a, mut_a = run_ea_experiment(kk_teams, kk_caps_a, dist_matrix)
+    generate_dual_plot(
+        fit_a, mut_a,
+        "Konvergenz Kreisklasse (Szenario A)",
+        "konvergenz_szenario_a_kk.png"
+    )
 
-    generate_dual_plot(kk_teams, kk_caps_a, dist_matrix, "Konvergenz Kreisklasse (Szenario A)", "konvergenz_szenario_a_kk.png")
-    generate_dual_plot(kk_teams, kk_caps_b, dist_matrix, "Konvergenz Kreisklasse (Szenario B)", "konvergenz_szenario_b_kk.png")
-    generate_dual_plot(kl_teams, kl_caps_a, dist_matrix, "Konvergenz Kreisliga", "konvergenz_kl.png")
+    # --- 2. Szenario B (Kreisklasse Ausgeglichen) ---
+    print("Starte Live-Lauf für Szenario B...")
+    kk_caps_b = [16, 16, 16, 15, 15, 15, 15, 15, 15, 15]
+    fit_b, mut_b = run_ea_experiment(kk_teams, kk_caps_b, dist_matrix)
+    generate_dual_plot(
+        fit_b, mut_b,
+        "Konvergenz Kreisklasse (Szenario B)",
+        "konvergenz_szenario_b_kk.png"
+    )
+
 
 if __name__ == "__main__":
     main()

@@ -10,6 +10,7 @@ vor bzw. während der Optimierung.
 import csv
 import os
 import random
+import re
 from collections import Counter
 from typing import Dict, List, Sequence, Tuple
 
@@ -26,7 +27,7 @@ TEAMS_CSV = os.path.join(DATA_DIR, "hamburg_vereine_geocoded_final.csv")
 POPULATION_SIZE = 300
 GENERATIONS = 5000
 ELITISM_RATE = 0.05
-PENALTY_KM = 5000.0
+PENALTY_KM = 50000.0
 
 # Dynamische Mutationsraten
 MUTATION_RATE_MIN = 0.10
@@ -36,8 +37,8 @@ MUTATION_ADAPTATION_STEP = 0.15
 TARGET_STAFFEL_SIZE = 15.0
 
 # Referenzwert aus baseline_calculator.py; wird mit der Kapazitätsliste geprüft.
-BASELINE_KM = 42253.02
-EXPECTED_BASELINE_MATCHES = 3670
+BASELINE_KM = 39768.93
+EXPECTED_BASELINE_MATCHES = 3466
 
 
 def _load_distance_matrix(path: str) -> Dict[str, Dict[str, float]]:
@@ -191,7 +192,17 @@ def load_data() -> Tuple[Dict[str, Dict[str, float]], List[str], List[str], List
 
 def get_base_club_name(team_name: str) -> str:
     """Extrahiert den Basisvereinsnamen zur Identifikation vereinsinterner Duelle."""
-    return "".join(char for char in team_name if not char.isdigit()).strip().casefold()
+    # 1. Entfernt Zahlen/Römische Ziffern am Ende des Namens
+    clean_name = re.sub(r'\s+(\d+\.?|[IVXLCDM]+)\.?\s*$', '', team_name, flags=re.IGNORECASE)
+
+    # 2. Entfernt isoliert stehende römische Ziffern
+    clean_name = re.sub(r'\b(I|II|III|IV|V|VI|VII|VIII|IX|X)\b', '', clean_name, flags=re.IGNORECASE)
+
+    # 3. Entfernt 'SG'
+    clean_name = re.sub(r'\bSG\b', '', clean_name, flags=re.IGNORECASE)
+
+    # 4. Normalisiert Leerzeichen & wandelt in Kleinbuchstaben um
+    return " ".join(clean_name.split()).casefold()
 
 
 def validate_capacities(teams: Sequence[str], staffel_sizes: Sequence[int], label: str) -> None:
@@ -474,7 +485,7 @@ def main() -> None:
             "rekonstruierte Staffelkapazität."
         )
 
-    # SZENARIO B: möglichst ausgeglichene Staffelgrößen mit Zielmittel 15.
+    # SZENARIO B: möglichst ausgeglichene Staffelgrößen
     print("\n" + "#" * 65)
     print(" SZENARIO B: Organisatorischer Kapazitätsausgleich")
     print("#" * 65)

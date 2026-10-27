@@ -89,7 +89,6 @@ def run_mini_ea(teams: list, staffel_sizes: list, dist_matrix: dict,
 def main():
     print("=== Starte exhaustive Hyperparameter 3D Grid-Search ===")
     total_runs = len(POPULATION_SIZES) * len(ELITISM_RATES) * len(MAX_MUT_RATES) * TEST_RUNS
-    print(f"Warnung: {total_runs} Durchläufe geplant. Dies kann 1-2 Stunden dauern!\n")
 
     dist_matrix, _, kl_teams, _, kl_capacities = load_data()
 

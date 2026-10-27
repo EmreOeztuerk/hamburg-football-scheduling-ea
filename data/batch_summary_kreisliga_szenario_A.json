@@ -1,0 +1,191 @@
+{
+    "szenario": "Kreisliga_Szenario_A",
+    "num_runs": 30,
+    "best_overall_fitness_km": 18138.46,
+    "worst_overall_fitness_km": 19621.27,
+    "mean_fitness_km": 18594.55,
+    "std_fitness_km": 294.96,
+    "mean_duration_sec": 920.97,
+    "runs_detail": [
+        {
+            "run": 1,
+            "seed": 1037,
+            "best_fitness_km": 18522.31,
+            "duration_sec": 968.54
+        },
+        {
+            "run": 2,
+            "seed": 1074,
+            "best_fitness_km": 19071.29,
+            "duration_sec": 921.22
+        },
+        {
+            "run": 3,
+            "seed": 1111,
+            "best_fitness_km": 18375.48,
+            "duration_sec": 966.02
+        },
+        {
+            "run": 4,
+            "seed": 1148,
+            "best_fitness_km": 18546.94,
+            "duration_sec": 906.79
+        },
+        {
+            "run": 5,
+            "seed": 1185,
+            "best_fitness_km": 18393.29,
+            "duration_sec": 960.7
+        },
+        {
+            "run": 6,
+            "seed": 1222,
+            "best_fitness_km": 18541.38,
+            "duration_sec": 907.61
+        },
+        {
+            "run": 7,
+            "seed": 1259,
+            "best_fitness_km": 18457.58,
+            "duration_sec": 969.33
+        },
+        {
+            "run": 8,
+            "seed": 1296,
+            "best_fitness_km": 18654.65,
+            "duration_sec": 920.69
+        },
+        {
+            "run": 9,
+            "seed": 1333,
+            "best_fitness_km": 18679.26,
+            "duration_sec": 990.25
+        },
+        {
+            "run": 10,
+            "seed": 1370,
+            "best_fitness_km": 18539.32,
+            "duration_sec": 876.76
+        },
+        {
+            "run": 11,
+            "seed": 1407,
+            "best_fitness_km": 18169.81,
+            "duration_sec": 989.97
+        },
+        {
+            "run": 12,
+            "seed": 1444,
+            "best_fitness_km": 18496.44,
+            "duration_sec": 870.77
+        },
+        {
+            "run": 13,
+            "seed": 1481,
+            "best_fitness_km": 18310.88,
+            "duration_sec": 996.34
+        },
+        {
+            "run": 14,
+            "seed": 1518,
+            "best_fitness_km": 18904.22,
+            "duration_sec": 882.41
+        },
+        {
+            "run": 15,
+            "seed": 1555,
+            "best_fitness_km": 18276.68,
+            "duration_sec": 988.51
+        },
+        {
+            "run": 16,
+            "seed": 1592,
+            "best_fitness_km": 19621.27,
+            "duration_sec": 878.16
+        },
+        {
+            "run": 17,
+            "seed": 1629,
+            "best_fitness_km": 18498.85,
+            "duration_sec": 982.96
+        },
+        {
+            "run": 18,
+            "seed": 1666,
+            "best_fitness_km": 18962.26,
+            "duration_sec": 899.38
+        },
+        {
+            "run": 19,
+            "seed": 1703,
+            "best_fitness_km": 18486.37,
+            "duration_sec": 982.04
+        },
+        {
+            "run": 20,
+            "seed": 1740,
+            "best_fitness_km": 18663.66,
+            "duration_sec": 903.67
+        },
+        {
+            "run": 21,
+            "seed": 1777,
+            "best_fitness_km": 18571.46,
+            "duration_sec": 976.44
+        },
+        {
+            "run": 22,
+            "seed": 1814,
+            "best_fitness_km": 18486.74,
+            "duration_sec": 898.99
+        },
+        {
+            "run": 23,
+            "seed": 1851,
+            "best_fitness_km": 18873.74,
+            "duration_sec": 992.99
+        },
+        {
+            "run": 24,
+            "seed": 1888,
+            "best_fitness_km": 18712.12,
+            "duration_sec": 908.26
+        },
+        {
+            "run": 25,
+            "seed": 1925,
+            "best_fitness_km": 18718.98,
+            "duration_sec": 827.2
+        },
+        {
+            "run": 26,
+            "seed": 1962,
+            "best_fitness_km": 18138.46,
+            "duration_sec": 860.72
+        },
+        {
+            "run": 27,
+            "seed": 1999,
+            "best_fitness_km": 18810.3,
+            "duration_sec": 841.58
+        },
+        {
+            "run": 28,
+            "seed": 2036,
+            "best_fitness_km": 18276.62,
+            "duration_sec": 866.54
+        },
+        {
+            "run": 29,
+            "seed": 2073,
+            "best_fitness_km": 18523.61,
+            "duration_sec": 831.25
+        },
+        {
+            "run": 30,
+            "seed": 2110,
+            "best_fitness_km": 18552.4,
+            "duration_sec": 862.93
+        }
+    ]
+}

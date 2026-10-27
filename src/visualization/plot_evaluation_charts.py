@@ -8,16 +8,16 @@ import os
 import matplotlib.pyplot as plt
 
 # ============================================================================= #
-# DOMÄNEN- UND EFFIZIENZ-KONSTANTEN (Keine Magic Numbers!)
+# DOMÄNEN- UND EFFIZIENZ-KONSTANTEN
 # ============================================================================= #
 CARS_PER_TEAM = 4
-CO2_KG_PER_KM = 0.15
+CO2_KG_PER_KM = 0.23 # 164 g/Pkm * 1.4 Pers/PKW = 229.6 g/km ≈ 0.23 kg/km
 KG_TO_TONS_FACTOR = 1000.0
 
 CO2_FACTOR_TONS_PER_KM = (CARS_PER_TEAM * CO2_KG_PER_KM) / KG_TO_TONS_FACTOR
 
 # Fallback-Festwerte (falls vor dem Ausführen von ea_optimizer.py geplottet wird)
-FALLBACK_KM_VALUES = [42253.02, 37860.02, 40264.90]
+FALLBACK_KM_VALUES = [39768.93, 37860.02, 40264.90]
 FALLBACK_EFFICIENCY_VALUES = [11.51, 10.36, 10.46]
 
 LABELS = [
@@ -164,12 +164,12 @@ def plot_co2_footprint(co2_values: list[float]):
         plt.text(bar.get_x() + bar.get_width() / 2, yval + (max_val * 0.01),
                  f"{format_german_number(yval)} t", ha='center', va='bottom', fontsize=11, fontweight='bold')
 
-    plt.title("Ökologischer Impact: CO₂-Emissionen der Auswärtsfahrten", fontsize=14, fontweight='bold', pad=15)
-    plt.ylabel("CO₂-Emissionen in Tonnen (t)", fontsize=12)
+    plt.title("Ökologischer Impact: CO₂e-Emissionen der Auswärtsfahrten", fontsize=14, fontweight='bold', pad=15)
+    plt.ylabel("CO₂e-Emissionen in Tonnen (t)", fontsize=12)
     plt.ylim(0, max_val * 1.20)
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     plt.figtext(0.5, 0.01,
-                f"*Berechnungsgrundlage: {CARS_PER_TEAM} PKW pro Team, {CO2_KG_PER_KM:.2f} kg CO₂ pro Kilometer",
+                f"*Berechnungsgrundlage: {CARS_PER_TEAM} PKW pro Team, {CO2_KG_PER_KM:.2f} kg CO₂e pro Kilometer",
                 ha="center", fontsize=9, style='italic', color='gray')
     plt.subplots_adjust(bottom=0.15)
     plt.savefig(os.path.join(DATA_DIR, "eval_co2_emissionen.png"), dpi=300)

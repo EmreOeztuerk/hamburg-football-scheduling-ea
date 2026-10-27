@@ -31,7 +31,7 @@ def get_team_staffel_mapping(filepath, is_baseline=False):
                     continue
                 staffel, team = row[0], row[1]
             else:
-                staffel, team = row[1], row[2]
+                staffel, team = row[1], row[0]  # KORREKTUR: row[0] ist das Team, row[1] die Staffel
             if staffel not in staffeln:
                 staffeln[staffel] = []
             staffeln[staffel].append(team)
@@ -59,7 +59,7 @@ def main():
     optimized_dist = calculate_team_distances(optimzed_staffeln, dist_matrix)
 
     results = []
-    for team in kk_teams:
+    for team in kk_teams + kl_teams:
         if team in baseline_dist and team in optimized_dist:
             old_dist = baseline_dist[team]
             new_dist = optimized_dist[team]

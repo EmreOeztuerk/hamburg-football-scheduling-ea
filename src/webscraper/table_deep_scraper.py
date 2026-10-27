@@ -100,33 +100,30 @@ def main():
                 response.raise_for_status()
                 soup = BeautifulSoup(response.content, 'html.parser')
 
-                club_divs = soup.find_all('div', class_='club-name')
+                # Gezielt nur den Tabellen-Container greifen, um nicht den Spielplan oben mitzulesen
+                table_container = soup.find('div', id='fixture-league-tables')
+                if table_container:
+                    club_divs = table_container.find_all('div', class_='club-name')
+                else:
+                    club_divs = soup.find_all('div', class_='club-name')
 
                 for div in club_divs:
                     team_name = div.get_text().strip()
-                    if not team_name:
+                    if not team_name or team_name in seen_teams:
                         continue
 
-                    # Überspringen, wenn wir diese Mannschaft schon haben!
-                    if team_name in seen_teams:
-                        continue
-
-                    # Zum Gedächtnis hinzufügen
                     seen_teams.add(team_name)
 
-                    link_tag = div.find('a')
-                    if not link_tag:
-                        link_tag = div.find_parent('a')
-                    if not link_tag:
-                        parent_td = div.find_parent('td')
-                        if parent_td:
-                            link_tag = parent_td.find('a')
+                    # Profillink aus dem umschließenden <a>-Tag auslesen
+                    link_tag = div.find('a') or div.find_parent('a')
+                    if not link_tag and div.find_parent('td'):
+                        link_tag = div.find_parent('td').find('a')
 
                     if link_tag and link_tag.has_attr('href'):
                         profile_url = link_tag['href']
                         print(f"Suche: {team_name}... ", end="", flush=True)
 
-                        time.sleep(2.5)
+                        time.sleep(2.0)
                         adresse = extract_address_from_profile(session, profile_url)
 
                         if "NICHT GEFUNDEN" in adresse or "FEHLER" in adresse:
@@ -136,7 +133,7 @@ def main():
 
                         writer.writerow([staffel_label, team_name, adresse])
                     else:
-                        print(f"Suche: {team_name}... KEIN PROFLLINK IN TABELLE")
+                        print(f"Suche: {team_name}... KEIN PROFILLINK IN TABELLE")
                         writer.writerow([staffel_label, team_name, "NICHT GEFUNDEN (Kein Profillink)"])
 
             except Exception as e:

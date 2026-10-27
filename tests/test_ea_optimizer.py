@@ -16,7 +16,7 @@ from src.ea.ea_optimizer import (
 
 def test_get_base_club_name():
     """Testet die Extraktion des Stammvereins zur Penalty-Prüfung (inkl. Casefolding)."""
-    assert get_base_club_name("FC Altona 93 2") == "fc altona"
+    assert get_base_club_name("FC Altona 93 2") == "fc altona 93"
 
 
 def test_order_crossover_validity():
@@ -65,8 +65,11 @@ def test_calculate_fitness_with_penalties(sample_teams, mock_distance_matrix):
 
 def test_capacity_and_trip_calculations():
     """Testet Hilfsfunktionen für Staffelgrößen und Auswärtsfahrten."""
-    # 160 Teams / 15 = 10.67 -> gerundet 11 Staffeln
-    assert calculate_optimal_staffeln(160) == 11
+    # Kreisklasse 2025/2026: 153 Teams / 15 = 10.2 -> gerundet 10 Staffeln
+    assert calculate_optimal_staffeln(153) == 10
+
+    # Kreisliga 2025/2026: 119 Teams / 15 = 7.93 -> gerundet 8 Staffeln
+    assert calculate_optimal_staffeln(119) == 8
 
     # 8 Teams auf 2 Staffeln je 4 Teams -> [4, 4] -> 2 x (4 * 3) = 24 Auswärtsfahrten
     assert calculate_away_trips([4, 4]) == 24

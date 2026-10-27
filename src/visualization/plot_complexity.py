@@ -1,7 +1,7 @@
 """
 Visualisierung der Problemkomplexität (Laufzeitvergleich).
 Berechnet die Stirling-Zahlen zweiter Art für das Partitionierungsproblem
-(160 Teams in 12 Staffeln) und vergleicht die Brute-Force-Laufzeit eines Supercomputers
+(153 Teams in 12 Staffeln) und vergleicht die Brute-Force-Laufzeit eines Supercomputers
 mit der Konvergenzzeit des Evolutionären Algorithmus.
 """
 
@@ -38,7 +38,7 @@ SRC_DIR = os.path.dirname(CURRENT_DIR)
 PROJECT_ROOT = os.path.dirname(SRC_DIR)
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 
-NUM_KK_TEAMS = 160
+NUM_KK_TEAMS = 153
 NUM_KK_STAFFELN = 12
 SUPERCOMPUTER_OPS_PER_SEC = 1_000_000_000
 AGE_OF_UNIVERSE_YEARS = 13_800_000_000
@@ -67,7 +67,7 @@ def main():
 
     plt.figure(figsize=(10, 6))
     labels = [
-        'Evolutionärer Algorithmus\n(~60 Sekunden)',
+        'Evolutionärer Algorithmus\n(~20 Minuten)',
         'Alter des Universums\n(13,8 Mrd. Jahre)',
         'Brute-Force Supercomputer\n(1 Mrd. Checks/Sek)'
     ]
@@ -75,12 +75,12 @@ def main():
     values_in_years = [ea_runtime_years, age_of_universe, years_needed]
     plt.bar(labels, values_in_years, color=ACADEMIC_COLORS[:3], width=0.6)
     plt.yscale('log')
-    plt.title("Laufzeit-Komplexität: EA vs. Brute-Force (160 Teams in 12 Staffeln)",
+    plt.title("Laufzeit-Komplexität: EA vs. Brute-Force (153 Teams in 12 Staffeln)",
               fontsize=14, fontweight='bold', pad=20)
     plt.ylabel("Benötigte Rechenzeit in Jahren (Logarithmische Skala)", fontsize=12)
     plt.grid(axis='y', linestyle='--', alpha=0.5)
 
-    plt.text(0, ea_runtime_years * 1.5, "1 Minute", ha='center', va='bottom', fontsize=11, fontweight='bold')
+    plt.text(0, ea_runtime_years * 1.5, "~ 20 Minuten", ha='center', va='bottom', fontsize=11, fontweight='bold')
     plt.text(1, age_of_universe * 1.5, "1.38 × 10^10 Jahre", ha='center', va='bottom', fontsize=11, fontweight='bold')
     plt.text(2, years_needed * 1.5, f"~10^{int(math.log10(years_needed))} Jahre", ha='center', va='bottom', fontsize=11, fontweight='bold')
 

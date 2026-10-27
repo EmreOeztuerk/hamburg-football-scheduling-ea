@@ -1,0 +1,196 @@
+{
+    "szenario": "B",
+    "total_runs_completed": 30,
+    "total_duration_minutes": 164.94,
+    "best_fitness_km": 23009.84,
+    "worst_fitness_km": 23931.67,
+    "mean_fitness_km": 23359.84,
+    "std_dev_km": 248.27,
+    "avg_execution_time_sec": 1265.35,
+    "best_seed": 1925,
+    "best_run_id": 25,
+    "best_run_convergence_history": [],
+    "best_run_mutation_history": [],
+    "all_runs_detailed": [
+        {
+            "run_id": 25,
+            "seed": 1925,
+            "fitness_km": 23009.84,
+            "execution_time_sec": 1244.06
+        },
+        {
+            "run_id": 11,
+            "seed": 1407,
+            "fitness_km": 23069.05,
+            "execution_time_sec": 1333.8
+        },
+        {
+            "run_id": 3,
+            "seed": 1111,
+            "fitness_km": 23085.91,
+            "execution_time_sec": 1181.55
+        },
+        {
+            "run_id": 12,
+            "seed": 1444,
+            "fitness_km": 23086.01,
+            "execution_time_sec": 1341.35
+        },
+        {
+            "run_id": 29,
+            "seed": 2073,
+            "fitness_km": 23087.36,
+            "execution_time_sec": 830.96
+        },
+        {
+            "run_id": 4,
+            "seed": 1148,
+            "fitness_km": 23087.37,
+            "execution_time_sec": 1221.7
+        },
+        {
+            "run_id": 21,
+            "seed": 1777,
+            "fitness_km": 23108.59,
+            "execution_time_sec": 1299.13
+        },
+        {
+            "run_id": 17,
+            "seed": 1629,
+            "fitness_km": 23111.79,
+            "execution_time_sec": 1320.09
+        },
+        {
+            "run_id": 20,
+            "seed": 1740,
+            "fitness_km": 23185.59,
+            "execution_time_sec": 1325.82
+        },
+        {
+            "run_id": 28,
+            "seed": 2036,
+            "fitness_km": 23198.24,
+            "execution_time_sec": 1253.11
+        },
+        {
+            "run_id": 13,
+            "seed": 1481,
+            "fitness_km": 23220.96,
+            "execution_time_sec": 1336.51
+        },
+        {
+            "run_id": 1,
+            "seed": 1037,
+            "fitness_km": 23221.79,
+            "execution_time_sec": 1189.46
+        },
+        {
+            "run_id": 24,
+            "seed": 1888,
+            "fitness_km": 23236.06,
+            "execution_time_sec": 1307.16
+        },
+        {
+            "run_id": 27,
+            "seed": 1999,
+            "fitness_km": 23258.88,
+            "execution_time_sec": 1248.27
+        },
+        {
+            "run_id": 16,
+            "seed": 1592,
+            "fitness_km": 23261.15,
+            "execution_time_sec": 1350.69
+        },
+        {
+            "run_id": 6,
+            "seed": 1222,
+            "fitness_km": 23365.07,
+            "execution_time_sec": 1319.91
+        },
+        {
+            "run_id": 9,
+            "seed": 1333,
+            "fitness_km": 23392.13,
+            "execution_time_sec": 1336.18
+        },
+        {
+            "run_id": 5,
+            "seed": 1185,
+            "fitness_km": 23443.73,
+            "execution_time_sec": 1320.45
+        },
+        {
+            "run_id": 30,
+            "seed": 2110,
+            "fitness_km": 23444.46,
+            "execution_time_sec": 838.76
+        },
+        {
+            "run_id": 7,
+            "seed": 1259,
+            "fitness_km": 23448.94,
+            "execution_time_sec": 1324.87
+        },
+        {
+            "run_id": 18,
+            "seed": 1666,
+            "fitness_km": 23451.15,
+            "execution_time_sec": 1311.08
+        },
+        {
+            "run_id": 10,
+            "seed": 1370,
+            "fitness_km": 23472.18,
+            "execution_time_sec": 1333.72
+        },
+        {
+            "run_id": 22,
+            "seed": 1814,
+            "fitness_km": 23492.37,
+            "execution_time_sec": 1306.1
+        },
+        {
+            "run_id": 14,
+            "seed": 1518,
+            "fitness_km": 23591.13,
+            "execution_time_sec": 1337.42
+        },
+        {
+            "run_id": 23,
+            "seed": 1851,
+            "fitness_km": 23629.97,
+            "execution_time_sec": 1297.41
+        },
+        {
+            "run_id": 8,
+            "seed": 1296,
+            "fitness_km": 23631.15,
+            "execution_time_sec": 1333.84
+        },
+        {
+            "run_id": 26,
+            "seed": 1962,
+            "fitness_km": 23631.16,
+            "execution_time_sec": 1266.11
+        },
+        {
+            "run_id": 15,
+            "seed": 1555,
+            "fitness_km": 23791.7,
+            "execution_time_sec": 1334.03
+        },
+        {
+            "run_id": 19,
+            "seed": 1703,
+            "fitness_km": 23849.71,
+            "execution_time_sec": 1311.09
+        },
+        {
+            "run_id": 2,
+            "seed": 1074,
+            "fitness_km": 23931.67,
+            "execution_time_sec": 1205.93
+        }
+    ]
+}
